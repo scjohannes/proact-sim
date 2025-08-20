@@ -10,6 +10,60 @@ We create a dataset with death carried forward, and a dataset without death carr
 ## Setup
 
 ```{r}
+library(tidyverse)
+library(data.table)
+library(here)
+```
+
+## Load Data
+
+```{r}
+data_raw <- haven::read_sas(here('ACTT2', 'data', 'ACTT2.sas7bdat'))
+
+data_clean <- Hmisc::upData(data_raw, lowernames = TRUE, moveUNITS = TRUE,
+    rename= c(usubjid = 'id', adyc = 'day', agec = 'age', arm = 'tx', or15scor = 'y15', ordscor = 'y', bcsosn = 'y0', bdursymp='dursx', comorb2 = 'co'),
+    labels=c(
+        id = 'Unique Subject Identifier',
+        day = 'Day',
+        age = 'Age',
+        tx = 'Treatment Arm',
+        y15 = 'Ordinal State at Day 15',
+        y = 'Ordinal State',
+        y0 = 'Baseline State',
+        dursx = 'Duration of Symptoms'
+    ),
+    day = if_else(day == 'Baseline', 0L, as.integer(day)),
+    age = if_else(age == '>89', 90, as.integer(age)),
+    co  = c('No Comorbidities'=0, '1 Comorbidity'=1,
+            '2 or more Comorbidities'=2, 'Unknown'=NA)[co])
+
+data_clean <- data_clean |> 
+    # assign sequential ids
+    mutate(
+        id = as.integer(factor(id)),
+    ) |>  
+    group_by(id) |>
+    # add date of death
+    mutate(
+        ddeath = if_else(any(y == 8), min(day[y == 8]), NA_integer_)
+    ) |> 
+    # remove rows after death
+    filter(day <= ddeath | is.na(ddeath)) |> 
+    mutate(
+    # last day in hpospital
+        dlasthop   = max(day[y >= 3 & y < 8]),
+    # earliest day at home
+        dhome      = min(day[y < 3]),
+    # last day in hospital of first hospital stay, rehosp not considered
+        dlasthospf = max(day[y >= 3 & y < 8 & (is.na(dhome) | day < dhome)]),
+    # d29the0 : date of death - date of randomization 
+    # d29dthe1 : date of last visit - date of randomization
+    # ttrecov0 : date of recovery - date of randomization
+    # ttrecov1 : date of last visit - date of randomization
+    # add plus 1 to ttrecov because censoring occured one day after last visit
+        dcens      = pmax(d29dthe0, d29dthe1, ttrecov0 + 1, ttrecov1 + 1, na.rm=TRUE)
+    )
+    
 
 ```
 
