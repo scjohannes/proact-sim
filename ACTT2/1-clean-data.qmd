@@ -1,0 +1,15 @@
+--- 
+Title: Prepare and Clean ICTT2 Data
+---
+
+In this file we prepare datasets used to analyze ACCT-2.
+
+We create a dataset with death carried forward, and a dataset without death carried forward.
+
+
+## Setup
+
+```{r}
+
+```
+

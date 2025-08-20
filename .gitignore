@@ -47,3 +47,7 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+data/
+ACTT2/data
+ACTT2/img
+ACTT2/output
